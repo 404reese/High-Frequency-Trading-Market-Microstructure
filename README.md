@@ -1,3 +1,13 @@
-files purpose 
-data-extract-script.py -> take some 100mb chunk from big file
-parser.py
+Project files:
+
+- `data-extract-script.py` extracts a smaller 100 MB sample from the full NASDAQ ITCH archive.
+- `parser-new.py` parses the sample with PySpark and exports `data/dashboard_summary.csv` and `data/stock_summary.csv`.
+- `dashboard.py` opens the Streamlit dashboard for visual presentation.
+
+Run order for the demo:
+
+1. Run `data-extract-script.py` once to create `data/sample_itch_100mb.bin`.
+2. Run `parser-new.py` to generate the dashboard-ready CSV files.
+3. Launch Streamlit with `streamlit run dashboard.py`.
+
+This setup is intended for a single laptop. It uses Spark for the batch parse step, then keeps the dashboard lightweight by reading compact summary CSV files.
