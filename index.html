@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HFT Trading Terminal - NASDAQ ITCH 5.0</title>
+    
+    <!-- Plotly CDN -->
+    <script src="https://cdn.plot.ly/plotly-3.1.0.min.js" charset="utf-8"></script>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, monospace;
+            background: linear-gradient(135deg, #0a0e1a 0%, #0d1117 100%);
+            color: #e0e0e0;
+            overflow-x: hidden;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #1a1f2e;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #2a3a4a;
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3a4a5a;
+        }
+        
+        /* Layout */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #0b0f16 0%, #0a0d14 100%);
+            border-right: 1px solid #1e2a3a;
+            padding: 1.5rem 1rem;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+        
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 1.5rem;
+        }
+        
+        /* Sidebar components */
+        .sidebar-section {
+            margin-bottom: 2rem;
+        }
+        
+        .sidebar-title {
+            color: #00ff88;
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .ticker-select {
+            width: 100%;
+            background: #0a0e14;
+            border: 1px solid #2a3a4a;
+            color: #e0e0e0;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            font-family: 'Inter', monospace;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .ticker-select:hover {
+            border-color: #00ff88;
+        }
+        
+        .ticker-select:focus {
+            outline: none;
+            border-color: #00ff88;
+        }
+        
+        /* Market Status */
+        .market-status {
+            background: #0a0e14;
+            border: 1px solid #2a3a4a;
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        
+        .status-online {
+            background-color: #00ff88;
+            box-shadow: 0 0 8px #00ff88;
+        }
+        
+        .status-warning {
+            background-color: #ffaa00;
+            box-shadow: 0 0 8px #ffaa00;
+        }
+        
+        .status-text {
+            color: #8899aa;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        /* Metric Cards */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #131722 0%, #0f131a 100%);
+            border: 1px solid #2a3a4a;
+            border-radius: 8px;
+            padding: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .metric-card:hover {
+            border-color: #00ff88;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 255, 136, 0.1);
+        }
+        
+        .metric-label {
+            color: #8899aa;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .metric-value {
+            color: #e0e0e0;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .metric-change {
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+        
+        .price-up {
+            color: #00ff88;
+        }
+        
+        .price-down {
+            color: #ff3355;
+        }
+        
+        /* Trading Panels */
+        .trading-panel {
+            background: linear-gradient(135deg, #131722 0%, #0f131a 100%);
+            border: 1px solid #2a3a4a;
+            border-radius: 8px;
+            padding: 1.2rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .panel-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #00ff88;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 1rem;
+            border-left: 3px solid #00ff88;
+            padding-left: 0.75rem;
+        }
+        
+        /* Two column layout */
+        .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        /* Order Book */
+        .order-book {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        .order-side {
+            background: #0a0e14;
+            border-radius: 6px;
+            padding: 0.75rem;
+        }
+        
+        .order-title {
+            color: #8899aa;
+            font-size: 0.75rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        .order-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.25rem 0;
+            font-size: 0.8rem;
+            border-bottom: 1px solid #1a1f2e;
+        }
+        
+        .bid-price {
+            color: #00ff88;
+        }
+        
+        .ask-price {
+            color: #ff3355;
+        }
+        
+        /* Data Table */
+        .data-table {
+            overflow-x: auto;
+        }
+        
+        .data-table table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        
+        .data-table th {
+            text-align: left;
+            padding: 0.5rem;
+            background: #0a0e14;
+            color: #00ff88;
+            font-weight: 600;
+            border-bottom: 1px solid #2a3a4a;
+        }
+        
+        .data-table td {
+            padding: 0.5rem;
+            border-bottom: 1px solid #1a1f2e;
+        }
+        
+        /* Header */
+        .header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #2a3a4a;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+        
+        .header-title {
+            color: #e0e0e0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+        
+        .header-subtitle {
+            color: #00ff88;
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            margin-top: 0.25rem;
+        }
+        
+        .header-right {
+            text-align: right;
+        }
+        
+        .live-feed {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: #0a0e14;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #2a3a4a;
+            font-size: 0.6rem;
+            z-index: 1000;
+        }
+        
+        .live-dot {
+            color: #00ff88;
+            display: inline-block;
+            animation: pulse 2s infinite;
+        }
+        
+        /* Loading state */
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #8899aa;
+        }
+        
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .sidebar {
+                width: 260px;
+            }
+            .main-content {
+                margin-left: 260px;
+            }
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                z-index: 1000;
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+            .two-columns {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-title">🔍 TICKER SELECTION</div>
+                <select id="tickerSelect" class="ticker-select">
+                    <option value="AAPL">AAPL - Apple Inc.</option>
+                    <option value="MSFT">MSFT - Microsoft Corp</option>
+                    <option value="GOOGL">GOOGL - Alphabet Inc.</option>
+                    <option value="AMZN">AMZN - Amazon.com</option>
+                    <option value="TSLA">TSLA - Tesla Inc.</option>
+                </select>
+            </div>
+            
+            <div class="sidebar-section">
+                <div class="sidebar-title">📡 MARKET STATUS</div>
+                <div id="marketStatus"></div>
+            </div>
+            
+            <div class="sidebar-section">
+                <div class="sidebar-title">📈 MARKET INDICATORS</div>
+                <div id="marketIndicators"></div>
+            </div>
+            
+            <div class="sidebar-section">
+                <div style="font-size: 0.65rem; color: #556677; text-align: center; margin-top: 1rem;">
+                    <span>ITCH 5.0 ENGINE</span><br>
+                    <span>LATENCY: &lt; 1ms</span><br>
+                    <span>UPDATES: REAL-TIME</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <div class="header">
+                <div>
+                    <div class="header-title">⚡ HFT TRADING TERMINAL</div>
+                    <div class="header-subtitle">NASDAQ ITCH 5.0 • REAL-TIME MICROSTRUCTURE</div>
+                </div>
+                <div class="header-right">
+                    <div style="color: #8899aa; font-size: 0.7rem;">CONNECTION: SECURE • LATENCY: &lt; 1ms</div>
+                </div>
+            </div>
+            
+            <!-- Metrics Grid -->
+            <div class="metrics-grid" id="metricsGrid"></div>
+            
+            <!-- Chart Panel -->
+            <div class="trading-panel">
+                <div class="panel-title">📊 PRICE ACTION & VWAP</div>
+                <div id="priceChart" style="height: 450px;"></div>
+            </div>
+            
+            <!-- Two Column Layout -->
+            <div class="two-columns">
+                <div class="trading-panel">
+                    <div class="panel-title">📊 VOLUME PROFILE</div>
+                    <div id="volumeChart" style="height: 350px;"></div>
+                </div>
+                <div class="trading-panel">
+                    <div class="panel-title">🏆 TOP LIQUIDITY POOLS</div>
+                    <div id="topStocksChart" style="height: 350px;"></div>
+                </div>
+            </div>
+            
+            <!-- Order Book -->
+            <div class="trading-panel">
+                <div class="panel-title">📚 ORDER BOOK DEPTH</div>
+                <div class="order-book" id="orderBook"></div>
+            </div>
+            
+            <!-- Trade Tape -->
+            <div class="trading-panel">
+                <div class="panel-title">📜 RECENT TRADES TAPE</div>
+                <div class="data-table" id="tradeTape"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="live-feed">
+        <span class="live-dot">●</span> LIVE FEED <span style="color: #556677; margin-left: 8px;">ITCH 5.0</span>
+    </div>
+    
+    <script>
+        // Simulated market data generator
+        class MarketDataSimulator {
+            constructor() {
+                this.basePrices = {
+                    'AAPL': 175.50,
+                    'MSFT': 420.75,
+                    'GOOGL': 142.80,
+                    'AMZN': 178.30,
+                    'TSLA': 245.60
+                };
+                this.currentPrices = {...this.basePrices};
+                this.historicalData = {};
+                this.initHistoricalData();
+            }
+            
+            initHistoricalData() {
+                for (let ticker in this.basePrices) {
+                    this.historicalData[ticker] = [];
+                    let price = this.basePrices[ticker];
+                    for (let i = 0; i < 60; i++) {
+                        let variation = (Math.random() - 0.5) * price * 0.02;
+                        price += variation;
+                        this.historicalData[ticker].push({
+                            minute: i,
+                            price: price,
+                            volume: Math.floor(Math.random() * 100000) + 50000,
+                            vwap: price * (1 + (Math.random() - 0.5) * 0.005)
+                        });
+                    }
+                }
+            }
+            
+            getStockData(ticker, minutes = 60) {
+                const data = this.historicalData[ticker] || [];
+                return data.slice(-minutes);
+            }
+            
+            getCurrentPrice(ticker) {
+                const data = this.historicalData[ticker];
+                if (data && data.length > 0) {
+                    return data[data.length - 1].price;
+                }
+                return this.basePrices[ticker];
+            }
+            
+            getAllStocks() {
+                const stocks = [];
+                for (let ticker in this.basePrices) {
+                    const data = this.historicalData[ticker];
+                    const totalVolume = data.reduce((sum, d) => sum + d.volume, 0);
+                    stocks.push({
+                        ticker: ticker,
+                        volume: totalVolume,
+                        price: data[data.length - 1].price
+                    });
+                }
+                return stocks.sort((a, b) => b.volume - a.volume);
+            }
+            
+            updatePrices() {
+                for (let ticker in this.basePrices) {
+                    const data = this.historicalData[ticker];
+                    if (data) {
+                        const lastPrice = data[data.length - 1].price;
+                        const change = (Math.random() - 0.5) * lastPrice * 0.01;
+                        const newPrice = Math.max(lastPrice + change, lastPrice * 0.95);
+                        const newVolume = Math.floor(Math.random() * 100000) + 50000;
+                        const newVWAP = newPrice * (1 + (Math.random() - 0.5) * 0.005);
+                        
+                        data.push({
+                            minute: data.length,
+                            price: newPrice,
+                            volume: newVolume,
+                            vwap: newVWAP
+                        });
+                        
+                        if (data.length > 60) data.shift();
+                        
+                        // Reindex minutes
+                        data.forEach((d, idx) => d.minute = idx);
+                    }
+                }
+            }
+        }
+        
+        // Initialize market data simulator
+        const marketSim = new MarketDataSimulator();
+        let currentTicker = 'AAPL';
+        
+        // Helper functions
+        function getMarketStatus() {
+            const hour = new Date().getHours();
+            const statuses = [];
+            
+            if (hour >= 9 && hour <= 16) {
+                statuses.push({ text: '🟢 MARKET OPEN', class: 'status-online' });
+            } else {
+                statuses.push({ text: '🔴 MARKET CLOSED', class: 'status-warning' });
+            }
+            
+            const volatility = Math.random() * 0.03;
+            if (volatility > 0.02) {
+                statuses.push({ text: '⚠️ HIGH VOLATILITY DETECTED', class: 'status-warning' });
+            } else if (volatility > 0.01) {
+                statuses.push({ text: '⚡ ELEVATED VOLATILITY', class: 'status-warning' });
+            } else {
+                statuses.push({ text: '✅ NORMAL CONDITIONS', class: 'status-online' });
+            }
+            
+            return statuses;
+        }
+        
+        function updateMarketStatus() {
+            const statuses = getMarketStatus();
+            const container = document.getElementById('marketStatus');
+            container.innerHTML = statuses.map(status => `
+                <div class="market-status">
+                    <div style="display: flex; align-items: center;">
+                        <div class="status-indicator ${status.class}"></div>
+                        <span class="status-text">${status.text}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function updateMarketIndicators() {
+            const data = marketSim.getStockData(currentTicker);
+            if (data.length < 2) return;
+            
+            const firstPrice = data[0].price;
+            const lastPrice = data[data.length - 1].price;
+            const change = lastPrice - firstPrice;
+            const changePercent = (change / firstPrice) * 100;
+            const arrow = changePercent >= 0 ? '▲' : '▼';
+            const colorClass = changePercent >= 0 ? 'price-up' : 'price-down';
+            
+            const container = document.getElementById('marketIndicators');
+            container.innerHTML = `
+                <div style="background: #0a0e14; border: 1px solid #2a3a4a; border-radius: 6px; padding: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="color: #8899aa; font-size: 0.7rem;">SESSION CHANGE</span>
+                        <span class="${colorClass}" style="font-size: 0.9rem; font-weight: 600;">${arrow} ${Math.abs(changePercent).toFixed(2)}%</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: #8899aa; font-size: 0.7rem;">VWAP PREMIUM</span>
+                        <span style="color: #e0e0e0; font-size: 0.8rem;">+0.15%</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function updateMetrics() {
+            const data = marketSim.getStockData(currentTicker);
+            if (data.length === 0) return;
+            
+            const lastData = data[data.length - 1];
+            const firstData = data[0];
+            const totalVolume = data.reduce((sum, d) => sum + d.volume, 0);
+            const tradeCount = data.length * 100;
+            const change = lastData.price - firstData.price;
+            const changePercent = (change / firstData.price) * 100;
+            const arrow = changePercent >= 0 ? '▲' : '▼';
+            const colorClass = changePercent >= 0 ? 'price-up' : 'price-down';
+            
+            const container = document.getElementById('metricsGrid');
+            container.innerHTML = `
+                <div class="metric-card">
+                    <div class="metric-label">LAST PRICE</div>
+                    <div class="metric-value">$${lastData.price.toFixed(2)}</div>
+                    <div class="metric-change ${colorClass}">${arrow} ${Math.abs(changePercent).toFixed(2)}%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">TOTAL VOLUME</div>
+                    <div class="metric-value">${totalVolume.toLocaleString()}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">VWAP</div>
+                    <div class="metric-value">$${lastData.vwap.toFixed(2)}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">TRADE COUNT</div>
+                    <div class="metric-value">${tradeCount.toLocaleString()}</div>
+                </div>
+            `;
+        }
+        
+        function updatePriceChart() {
+            const data = marketSim.getStockData(currentTicker);
+            
+            // Generate OHLC data from price points
+            const ohlcData = data.map((d, idx) => {
+                const variation = d.price * 0.002;
+                return {
+                    time: d.minute,
+                    open: d.price - variation * Math.random(),
+                    high: d.price + variation * Math.random(),
+                    low: d.price - variation * Math.random(),
+                    close: d.price,
+                    vwap: d.vwap
+                };
+            });
+            
+            const trace1 = {
+                x: ohlcData.map(d => d.time),
+                open: ohlcData.map(d => d.open),
+                high: ohlcData.map(d => d.high),
+                low: ohlcData.map(d => d.low),
+                close: ohlcData.map(d => d.close),
+                type: 'candlestick',
+                name: 'Price',
+                increasing: { line: { color: '#00ff88' }, fillcolor: 'rgba(0, 255, 136, 0.1)' },
+                decreasing: { line: { color: '#ff3355' }, fillcolor: 'rgba(255, 51, 85, 0.1)' },
+                line: { width: 1.5 }
+            };
+            
+            const trace2 = {
+                x: ohlcData.map(d => d.time),
+                y: ohlcData.map(d => d.vwap),
+                type: 'scatter',
+                mode: 'lines',
+                name: 'VWAP',
+                line: { color: '#ffaa00', width: 1.5, dash: 'dot' },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(255, 170, 0, 0.05)'
+            };
+            
+            const layout = {
+                template: 'plotly_dark',
+                hovermode: 'x unified',
+                margin: { l: 10, r: 10, t: 30, b: 30 },
+                plot_bgcolor: 'rgba(19, 23, 34, 0.5)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                xaxis: {
+                    title: 'Time (Minutes)',
+                    showgrid: true,
+                    gridcolor: 'rgba(128,128,128,0.1)',
+                    zeroline: false,
+                    showline: true,
+                    linecolor: '#2a3a4a'
+                },
+                yaxis: {
+                    title: 'Price (USD)',
+                    showgrid: true,
+                    gridcolor: 'rgba(128,128,128,0.1)',
+                    zeroline: false,
+                    tickprefix: '$',
+                    showline: true,
+                    linecolor: '#2a3a4a',
+                    side: 'right'
+                },
+                legend: {
+                    orientation: 'h',
+                    yanchor: 'bottom',
+                    y: 1.02,
+                    xanchor: 'right',
+                    x: 1,
+                    font: { size: 10, color: '#8899aa' },
+                    bgcolor: 'rgba(0,0,0,0)'
+                }
+            };
+            
+            Plotly.newPlot('priceChart', [trace1, trace2], layout, { responsive: true, displayModeBar: true });
+        }
+        
+        function updateVolumeChart() {
+            const data = marketSim.getStockData(currentTicker);
+            
+            const trace = {
+                x: data.map(d => d.minute),
+                y: data.map(d => d.volume),
+                type: 'bar',
+                name: 'Volume',
+                marker: { color: '#2a6f8f', line: { width: 0 } },
+                opacity: 0.8
+            };
+            
+            const layout = {
+                template: 'plotly_dark',
+                hovermode: 'x unified',
+                margin: { l: 10, r: 10, t: 10, b: 30 },
+                plot_bgcolor: 'rgba(19, 23, 34, 0.5)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                xaxis: {
+                    title: 'Time (Minutes)',
+                    showgrid: false,
+                    zeroline: false,
+                    showline: true,
+                    linecolor: '#2a3a4a'
+                },
+                yaxis: {
+                    title: 'Shares',
+                    showgrid: true,
+                    gridcolor: 'rgba(128,128,128,0.1)',
+                    zeroline: false,
+                    showline: true,
+                    linecolor: '#2a3a4a'
+                }
+            };
+            
+            Plotly.newPlot('volumeChart', [trace], layout, { responsive: true, displayModeBar: false });
+        }
+        
+        function updateTopStocksChart() {
+            const stocks = marketSim.getAllStocks();
+            const topStocks = stocks.slice(0, 10);
+            
+            const trace = {
+                x: topStocks.map(s => s.ticker),
+                y: topStocks.map(s => s.volume),
+                type: 'bar',
+                name: 'Volume',
+                marker: { color: '#00ff88', line: { width: 0 } },
+                opacity: 0.7,
+                text: topStocks.map(s => `${(s.volume / 1e6).toFixed(1)}M`),
+                textposition: 'outside',
+                textfont: { size: 9, color: '#8899aa' }
+            };
+            
+            const layout = {
+                template: 'plotly_dark',
+                margin: { l: 10, r: 10, t: 10, b: 50 },
+                plot_bgcolor: 'rgba(19, 23, 34, 0.5)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                xaxis: {
+                    tickangle: -45,
+                    showgrid: false,
+                    zeroline: false,
+                    showline: true,
+                    linecolor: '#2a3a4a'
+                },
+                yaxis: {
+                    title: 'Volume (Shares)',
+                    showgrid: true,
+                    gridcolor: 'rgba(128,128,128,0.1)',
+                    zeroline: false,
+                    showline: true,
+                    linecolor: '#2a3a4a'
+                }
+            };
+            
+            Plotly.newPlot('topStocksChart', [trace], layout, { responsive: true, displayModeBar: false });
+        }
+        
+        function updateOrderBook() {
+            const currentPrice = marketSim.getCurrentPrice(currentTicker);
+            const container = document.getElementById('orderBook');
+            
+            // Generate random order book
+            const bids = [];
+            const asks = [];
+            
+            for (let i = 1; i <= 10; i++) {
+                bids.push({
+                    price: currentPrice - (i * 0.05),
+                    size: Math.floor(Math.random() * 5000) + 100
+                });
+                asks.push({
+                    price: currentPrice + (i * 0.05),
+                    size: Math.floor(Math.random() * 5000) + 100
+                });
+            }
+            
+            container.innerHTML = `
+                <div class="order-side">
+                    <div class="order-title">BID SIDE</div>
+                    ${bids.map(bid => `
+                        <div class="order-row">
+                            <span class="bid-price">$${bid.price.toFixed(2)}</span>
+                            <span>${bid.size.toLocaleString()}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="order-side">
+                    <div class="order-title">ASK SIDE</div>
+                    ${asks.map(ask => `
+                        <div class="order-row">
+                            <span class="ask-price">$${ask.price.toFixed(2)}</span>
+                            <span>${ask.size.toLocaleString()}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        function updateTradeTape() {
+            const data = marketSim.getStockData(currentTicker);
+            const recentTrades = data.slice(-10).reverse();
+            
+            const table = `
+                <table>
+                    <thead>
+                        <tr><th>Time</th><th>Price</th><th>Volume</th><th>VWAP</th><th>Dir</th></tr>
+                    </thead>
+                    <tbody>
+                        ${recentTrades.map(trade => {
+                            const direction = trade.price > (data[data.indexOf(trade) - 1]?.price || trade.price) ? '▲' : '▼';
+                            const colorClass = direction === '▲' ? 'price-up' : 'price-down';
+                            return `
+                                <tr>
+                                    <td>${trade.minute}</td>
+                                    <td>$${trade.price.toFixed(4)}</td>
+                                    <td>${trade.volume.toLocaleString()}</td>
+                                    <td>$${trade.vwap.toFixed(4)}</td>
+                                    <td class="${colorClass}">${direction}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            document.getElementById('tradeTape').innerHTML = table;
+        }
+        
+        function refreshAll() {
+            updateMarketStatus();
+            updateMarketIndicators();
+            updateMetrics();
+            updatePriceChart();
+            updateVolumeChart();
+            updateTopStocksChart();
+            updateOrderBook();
+            updateTradeTape();
+        }
+        
+        // Handle ticker change
+        document.getElementById('tickerSelect').addEventListener('change', (e) => {
+            currentTicker = e.target.value;
+            refreshAll();
+        });
+        
+        // Simulate real-time updates
+        setInterval(() => {
+            marketSim.updatePrices();
+            refreshAll();
+        }, 3000);
+        
+        // Initial load
+        refreshAll();
+    </script>
+</body>
+</html>
