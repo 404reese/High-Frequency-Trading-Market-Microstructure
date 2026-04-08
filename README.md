@@ -19,3 +19,8 @@ set PYSPARK_DRIVER_PYTHON=python
 set HADOOP_HOME=C:\hadoop
 set hadoop.home.dir=C:\hadoop
 set PATH=%PATH%;C:\hadoop\bin
+
+
+docker
+docker run -it --rm -v "%cd%:/app" spark-hft-env /bin/bash
+/opt/spark/bin/spark-submit parser-new.py
